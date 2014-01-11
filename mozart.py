@@ -156,6 +156,10 @@ if __name__ == '__main__':
 	./mozart.py init
 	#查看报告
 	./mozart.py report
+	#生成净值图
+	./mozart.py asset
+	#生成单次平仓盈亏图
+	./mozart.py close
 	#处理保证金监控中心月度报告
 	./mozart.py *.xls
 	'''
@@ -179,7 +183,7 @@ if __name__ == '__main__':
 		get(openclose)
 		report(openclose)
 		print '获取报告成功'
-	elif sys.argv[1] == 'value':
+	elif sys.argv[1] == 'asset':
 		openclose = []
 		get(openclose)
 		if openclose[-1].close_date == '0':
@@ -207,7 +211,7 @@ if __name__ == '__main__':
 		#r.grid( ny=8,lwd=1,lty=2,col="blue")
 		r.abline(h=openclose[0].asset-openclose[0].profit, col="red", lty=2)
 		#r.dev.off()
-	elif sys.argv[1] == 'bar':
+	elif sys.argv[1] == 'close':
 		openclose = []
 		get(openclose)
 		if openclose[-1].close_date == '0':
