@@ -203,7 +203,7 @@ if __name__ == '__main__':
 			if i.asset < min_asset or min_asset == 0:
 				min_asset = i.asset
 		r = ro.r
-		r.png('value.png', width=800, height=500)
+		r.png('asset.png', width=800, height=500)
 		r.plot(x, y, type="l", col="black", xlab="日期",\
 			ylab="权益", main="ArchDark期货程序化交易系统",\
 			lwd=3, las=1)
@@ -242,9 +242,9 @@ if __name__ == '__main__':
 				avg_loss += i.profit
 				loss_t += 1
 		r = ro.r
-		r.png('bar.png', width=800, height=500)
+		r.png('close.png', width=800, height=500)
 		r.plot(x, y, type="h", col="black", xlab="日期",\
-			ylab="单次盈亏", main="ArchDark期货程序化交易系统",\
+			ylab="平仓盈亏", main="ArchDark期货程序化交易系统",\
 			lwd=3, las=1)
 		r.legend(x=0,y=max_win,legend=r.c("MaxWin: %.2f  AvgWin: %.2f" % (max_win, 1.0*avg_win/win_t), \
 		"MaxLoss: %.2f  AvgLoss: %.2f" % (max_loss,  1.0*avg_loss/loss_t)))
