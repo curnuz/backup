@@ -11,10 +11,12 @@ from datetime import datetime
 
 import sys
 import rpy2.robjects as ro
+import math
 
 #######################################
 ## 初始化配置信息
 #######################################
+APP_NAME = 'ArchDark期货程序化交易系统'
 INIT_ASSET = 106831.41
 INIT_OPEN_DATE = '2013-09-01'
 DB_USER = 'lifesurge'
@@ -44,10 +46,10 @@ class TradeLog(Base):
 		self.close_date = '0'
 		self.created = datetime.now()
 	
-def get(set):
+def get(openclose):
 	ts = session.query(TradeLog).order_by(TradeLog.created).all()
 	for t in ts:
-		set.append(t)
+		openclose.append(t)
 		
 def process_xls(openclose, name):
 	bk = xlrd.open_workbook(name)
@@ -133,9 +135,9 @@ def report(openclose):
 		'\t期末日期:', (openclose[-1].open_date)
 	print '期初权益: %.2f' % (106831.41),\
 		'\t期末权益: %.2f' % (openclose[-1].asset)
-	print '净盈利金额: %.2f' % (openclose[-1].asset - openclose[0].asset),\
+	print '净盈利金额: %.2f' % (openclose[-1].asset - INIT_ASSET),\
 		'\t净盈利比: %.2f%%' % (100.0*(openclose[-1].asset - \
-		openclose[0].asset)/106831.41)
+		INIT_ASSET)/INIT_ASSET)
 
 	print '总交易次数:', (wt + lt),\
 		'\t总盈利次数:', wt
@@ -204,10 +206,10 @@ if __name__ == '__main__':
 				min_asset = i.asset
 		r = ro.r
 		r.png('asset.png', width=800, height=500)
-		r.plot(x, y, type="l", col="black", xlab="日期",\
-			ylab="权益", main="ArchDark期货程序化交易系统",\
+		r.plot(x, y, type="l", col="#27408B", xlab="日期",\
+			ylab="权益", main="账户权益-"+APP_NAME,\
 			lwd=3, las=1)
-		r.legend(x=0,y=max_asset, legend=r.c("Close: %.2f  Open: %.2f"%(openclose[-1].asset, (openclose[0].asset - openclose[0].profit)), "Max: %.2f  Min: %.2f" % (max_asset, min_asset)))
+		r.legend(x=0,y=max_asset, legend=r.c("Close: %.2f  Open: %.2f"%(openclose[-1].asset, (openclose[0].asset - openclose[0].profit)), "High: %.2f  Low: %.2f" % (max_asset, min_asset)))
 		#r.grid( ny=8,lwd=1,lty=2,col="blue")
 		r.abline(h=openclose[0].asset-openclose[0].profit, col="red", lty=2)
 		#r.dev.off()
@@ -244,11 +246,100 @@ if __name__ == '__main__':
 		r = ro.r
 		r.png('close.png', width=800, height=500)
 		r.plot(x, y, type="h", col="black", xlab="日期",\
-			ylab="平仓盈亏", main="ArchDark期货程序化交易系统",\
+			ylab="平仓盈亏", main="平仓盈亏-"+APP_NAME,\
 			lwd=3, las=1)
 		r.legend(x=0,y=max_win,legend=r.c("MaxWin: %.2f  AvgWin: %.2f" % (max_win, 1.0*avg_win/win_t), \
 		"MaxLoss: %.2f  AvgLoss: %.2f" % (max_loss,  1.0*avg_loss/loss_t)))
 		#r.abline(h=0, col="red", lty=1)
+	
+	elif sys.argv[1] == 'factor': ## 盈利因子跟踪
+		openclose = []
+		get(openclose)
+		if openclose[-1].close_date == '0':
+			openclose = openclose[:-1]
+
+		x = []
+		y = []
+		j = 0
+		tw = 0 # 总盈利金额
+		wt = 0 # 总盈利次数
+		tl = 0 # 总亏损金额
+		lt = 0 # 总亏损次数
+		f = 0
+		maxf = 0
+		for i in openclose:
+			x.append(j)
+			j += 1
+			if i.profit <= 0:
+				lt += 1
+				tl += i.profit
+			else:
+				wt += 1
+				tw += i.profit
+			q = 0
+			if wt != 0 and lt != 0 and tl != 0:
+				q = 1.0*tw/wt/(-tl/lt)
+			p = 1.0*wt/(wt+lt)
+			if p == 0:
+				y.append(0)
+			else:
+				f = p*(1+q)-1
+				if f > maxf:
+					maxf = f
+				y.append(f)
+		r = ro.r
+		r.png('factor.png', width=800, height=500)
+		r.plot(x, y, type="l", col="black", xlab="序号",\
+			ylab="盈利因子", main="盈利因子-"+APP_NAME,\
+			lwd=3, las=1)
+		r.legend(x=0,y=maxf,legend=r.c("Factor: %.2f" % f))
+		r.abline(h=0, col="red", lty=2)
+
+
+
+	elif sys.argv[1] == 'stat': ## 单次平仓盈亏统计分析图
+		openclose = []
+		get(openclose)
+		x = []
+		y = []
+		j = 0
+		loset = 0
+		for i in openclose:
+			y.append(i.profit)
+			x.append(j)
+			j += 1
+			if i.profit <= 0:
+				loset += 1
+		y = sorted(y)
+		r = ro.r
+		r.png('stats.png', width=800, height=250)
+		r.par(mfrow=r.c(1,2))
+		r.plot(x, y, type="h", col="black", xlab="序号",\
+			ylab="盈亏金额", main="盈亏金额排序-"+APP_NAME,\
+			lwd=3, las=1)
+		r.abline(v=loset-0.5, col="red", lty=2)
+
+		stats = {}
+		scale =  600*4
+		for i in openclose:
+			#p = math.fabs(i.profit)
+			p = 1
+			index = int(math.floor(i.profit/scale))
+			stats[index] = stats[index] + p \
+				if index in stats else p
+		x = []
+		y = []
+		maxp = 0
+		for i in sorted(stats):
+			x.append(i)
+			y.append(stats[i])
+		
+		r.plot(x, y, type="h", col="black", xlab="盈亏金额",\
+			ylab="频率", main ="盈亏金额分布-"+APP_NAME, \
+			lwd=3, las=1)
+		r.legend(x=0,y=maxp,legend=r.c("scale: %.2f" % scale))
+		r.abline(v=-0.5, col="red", lty=2)
+
 
 	else:
 		openclose = []
